@@ -12,15 +12,16 @@ class Program
     static int playerX = Cols / 2;
     static int playerY = Rows - 3;
     static int dirX = 0;
-    static int dirY = -1; // start omhoog
+    static int dirY = -1;
 
     static HashSet<(int x, int y)> trail = new HashSet<(int x, int y)>();
     static float moveTimer = 0f;
     static float moveInterval = 0.15f;
+    static bool gameOver = false;
 
     static void Main()
     {
-        Raylib.InitWindow(ScreenW, ScreenH, "Lockstep - Fase 1");
+        Raylib.InitWindow(ScreenW, ScreenH, "Lockstep - Fase 3 collision");
         Raylib.SetTargetFPS(60);
 
         trail.Add((playerX, playerY));
@@ -28,13 +29,21 @@ class Program
         while (!Raylib.WindowShouldClose())
         {
             float dt = Raylib.GetFrameTime();
-            HandleInput();
 
-            moveTimer += dt;
-            if (moveTimer >= moveInterval)
+            if (!gameOver)
             {
-                moveTimer = 0f;
-                MovePlayer();
+                HandleInput();
+
+                moveTimer += dt;
+                if (moveTimer >= moveInterval)
+                {
+                    moveTimer = 0f;
+                    MovePlayer();
+                }
+            }
+            else if (Raylib.IsKeyPressed(KeyboardKey.Enter))
+            {
+                ResetGame();
             }
 
             Draw();
@@ -48,34 +57,63 @@ class Program
         // Geen 180 graden bochten
         if ((Raylib.IsKeyPressed(KeyboardKey.Up) || Raylib.IsKeyPressed(KeyboardKey.W)) && dirY != 1)
         {
-            dirX = 0; dirY = -1;
+            dirX = 0;
+            dirY = -1;
         }
         else if ((Raylib.IsKeyPressed(KeyboardKey.Down) || Raylib.IsKeyPressed(KeyboardKey.S)) && dirY != -1)
         {
-            dirX = 0; dirY = 1;
+            dirX = 0;
+            dirY = 1;
         }
         else if ((Raylib.IsKeyPressed(KeyboardKey.Left) || Raylib.IsKeyPressed(KeyboardKey.A)) && dirX != 1)
         {
-            dirX = -1; dirY = 0;
+            dirX = -1;
+            dirY = 0;
         }
         else if ((Raylib.IsKeyPressed(KeyboardKey.Right) || Raylib.IsKeyPressed(KeyboardKey.D)) && dirX != -1)
         {
-            dirX = 1; dirY = 0;
+            dirX = 1;
+            dirY = 0;
         }
     }
 
     static void MovePlayer()
     {
-        playerX += dirX;
-        playerY += dirY;
+        int nextX = playerX + dirX;
+        int nextY = playerY + dirY;
 
-        // Binnen het scherm houden (tijdelijk, later collision)
-        if (playerX < 0) playerX = 0;
-        if (playerY < 0) playerY = 0;
-        if (playerX >= Cols) playerX = Cols - 1;
-        if (playerY >= Rows) playerY = Rows - 1;
+        // Botsing met de rand
+        if (nextX < 0 || nextX >= Cols || nextY < 0 || nextY >= Rows)
+        {
+            gameOver = true;
+            return;
+        }
+
+        // Botsing met het bestaande spoor
+        if (trail.Contains((nextX, nextY)))
+        {
+            gameOver = true;
+            return;
+        }
+
+        playerX = nextX;
+        playerY = nextY;
 
         trail.Add((playerX, playerY));
+    }
+
+    static void ResetGame()
+    {
+        playerX = Cols / 2;
+        playerY = Rows - 3;
+        dirX = 0;
+        dirY = -1;
+
+        trail.Clear();
+        trail.Add((playerX, playerY));
+
+        moveTimer = 0f;
+        gameOver = false;
     }
 
     static void Draw()
@@ -83,7 +121,7 @@ class Program
         Raylib.BeginDrawing();
         Raylib.ClearBackground(Color.Black);
 
-        // permanent spoor
+        // Permanent spoor
         foreach (var cell in trail)
         {
             Raylib.DrawRectangle(
@@ -95,17 +133,26 @@ class Program
             );
         }
 
-        // speler
-        Raylib.DrawRectangle(
-            playerX * CellSize,
-            playerY * CellSize,
-            CellSize,
-            CellSize,
-            Color.SkyBlue
-        );
+        // Speler
+        if (!gameOver)
+        {
+            Raylib.DrawRectangle(
+                playerX * CellSize,
+                playerY * CellSize,
+                CellSize,
+                CellSize,
+                Color.SkyBlue
+            );
+        }
 
-        Raylib.DrawText("Fase 1: bewegen + permanent spoor", 10, 10, 20, Color.White);
+        Raylib.DrawText("Fase 3: bewegen + collision", 10, 10, 20, Color.White);
         Raylib.DrawText("WASD / Pijltjes", 10, 40, 18, Color.Gray);
+
+        if (gameOver)
+        {
+            Raylib.DrawText("GAME OVER", 280, 280, 28, Color.Yellow);
+            Raylib.DrawText("Druk op Enter om opnieuw te spelen", 205, 315, 18, Color.White);
+        }
 
         Raylib.EndDrawing();
     }
