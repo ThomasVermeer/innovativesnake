@@ -17,7 +17,12 @@ class Program
     static HashSet<(int x, int y)> trail = new HashSet<(int x, int y)>();
     static float moveTimer = 0f;
     static float moveInterval = 0.15f;
+
     static bool gameOver = false;
+    static bool deathAnim = false;
+    static float deathTimer = 0f;
+    static int deathX = 0;
+    static int deathY = 0;
 
     static void Main()
     {
@@ -30,7 +35,16 @@ class Program
         {
             float dt = Raylib.GetFrameTime();
 
-            if (!gameOver)
+            if (deathAnim)
+            {
+                deathTimer += dt;
+                if (deathTimer >= 3f)
+                {
+                    deathAnim = false;
+                    gameOver = true;
+                }
+            }
+            else if (!gameOver)
             {
                 HandleInput();
 
@@ -54,7 +68,6 @@ class Program
 
     static void HandleInput()
     {
-        // Geen 180 graden bochten
         if ((Raylib.IsKeyPressed(KeyboardKey.Up) || Raylib.IsKeyPressed(KeyboardKey.W)) && dirY != 1)
         {
             dirX = 0;
@@ -77,28 +90,33 @@ class Program
         }
     }
 
+    static void StartDeath(int x, int y)
+    {
+        deathX = x;
+        deathY = y;
+        deathTimer = 0f;
+        deathAnim = true;
+    }
+
     static void MovePlayer()
     {
         int nextX = playerX + dirX;
         int nextY = playerY + dirY;
 
-        // Botsing met de rand
         if (nextX < 0 || nextX >= Cols || nextY < 0 || nextY >= Rows)
         {
-            gameOver = true;
+            StartDeath(playerX, playerY);
             return;
         }
 
-        // Botsing met het bestaande spoor
         if (trail.Contains((nextX, nextY)))
         {
-            gameOver = true;
+            StartDeath(nextX, nextY);
             return;
         }
 
         playerX = nextX;
         playerY = nextY;
-
         trail.Add((playerX, playerY));
     }
 
@@ -108,12 +126,12 @@ class Program
         playerY = Rows - 3;
         dirX = 0;
         dirY = -1;
-
         trail.Clear();
         trail.Add((playerX, playerY));
-
         moveTimer = 0f;
         gameOver = false;
+        deathAnim = false;
+        deathTimer = 0f;
     }
 
     static void Draw()
@@ -121,7 +139,6 @@ class Program
         Raylib.BeginDrawing();
         Raylib.ClearBackground(Color.Black);
 
-        // Permanent spoor
         foreach (var cell in trail)
         {
             Raylib.DrawRectangle(
@@ -133,8 +150,7 @@ class Program
             );
         }
 
-        // Speler
-        if (!gameOver)
+        if (!gameOver && !deathAnim)
         {
             Raylib.DrawRectangle(
                 playerX * CellSize,
@@ -145,7 +161,20 @@ class Program
             );
         }
 
-        Raylib.DrawText("Fase 3: bewegen + collision", 10, 10, 20, Color.White);
+        if (deathAnim)
+        {
+            int cx = deathX * CellSize + CellSize / 2;
+            int cy = deathY * CellSize + CellSize / 2;
+            float t = deathTimer / 3f;
+            int radius = (int)(10 + t * 40);
+
+            Raylib.DrawCircleLines(cx, cy, radius, Color.Red);
+            Raylib.DrawCircleLines(cx, cy, radius + 8, Color.Orange);
+            Raylib.DrawRectangle(deathX * CellSize, deathY * CellSize, CellSize, CellSize, Color.Red);
+            Raylib.DrawText("...", cx - 10, cy - 50, 20, Color.Red);
+        }
+
+        Raylib.DrawText("Fase 3: collision + death effect", 10, 10, 20, Color.White);
         Raylib.DrawText("WASD / Pijltjes", 10, 40, 18, Color.Gray);
 
         if (gameOver)
