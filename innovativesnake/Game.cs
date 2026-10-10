@@ -10,12 +10,14 @@ class Game
     public const int ScreenH = Rows * CellSize;
 
     public Entity Player;
+    public List<Bot> Bots = new List<Bot>();
     public HashSet<(int x, int y)> Trail = new HashSet<(int x, int y)>();
 
     public float MoveTimer = 0f;
     public float MoveInterval = 0.15f;
 
     public bool GameOver = false;
+    public bool PlayerWon = false;
     public bool DeathAnim = false;
     public float DeathTimer = 0f;
     public int DeathX = 0;
@@ -29,10 +31,20 @@ class Game
     public void Reset()
     {
         Player = new Entity(Cols / 2, Rows - 3, 0, -1, Color.SkyBlue, true);
+
+        Bots.Clear();
+        Bots.Add(new Bot(3, 3, 1, 0, Color.Red, BotStyle.Random, 11));
+        Bots.Add(new Bot(Cols - 4, 3, 0, 1, Color.Green, BotStyle.Cautious, 22));
+        Bots.Add(new Bot(Cols / 2, 3, -1, 0, Color.Orange, BotStyle.Aggressive, 33));
+
         Trail.Clear();
         Trail.Add((Player.X, Player.Y));
+        foreach (var b in Bots)
+            Trail.Add((b.X, b.Y));
+
         MoveTimer = 0f;
         GameOver = false;
+        PlayerWon = false;
         DeathAnim = false;
         DeathTimer = 0f;
     }
@@ -42,25 +54,13 @@ class Game
         if (!Player.Alive || GameOver || DeathAnim) return;
 
         if ((Raylib.IsKeyPressed(KeyboardKey.Up) || Raylib.IsKeyPressed(KeyboardKey.W)) && Player.DirY != 1)
-        {
-            Player.DirX = 0;
-            Player.DirY = -1;
-        }
+        { Player.DirX = 0; Player.DirY = -1; }
         else if ((Raylib.IsKeyPressed(KeyboardKey.Down) || Raylib.IsKeyPressed(KeyboardKey.S)) && Player.DirY != -1)
-        {
-            Player.DirX = 0;
-            Player.DirY = 1;
-        }
+        { Player.DirX = 0; Player.DirY = 1; }
         else if ((Raylib.IsKeyPressed(KeyboardKey.Left) || Raylib.IsKeyPressed(KeyboardKey.A)) && Player.DirX != 1)
-        {
-            Player.DirX = -1;
-            Player.DirY = 0;
-        }
+        { Player.DirX = -1; Player.DirY = 0; }
         else if ((Raylib.IsKeyPressed(KeyboardKey.Right) || Raylib.IsKeyPressed(KeyboardKey.D)) && Player.DirX != -1)
-        {
-            Player.DirX = 1;
-            Player.DirY = 0;
-        }
+        { Player.DirX = 1; Player.DirY = 0; }
     }
 
     void StartDeath(int x, int y)
@@ -81,6 +81,7 @@ class Game
             {
                 DeathAnim = false;
                 GameOver = true;
+                PlayerWon = false;
             }
             return;
         }
@@ -93,30 +94,63 @@ class Game
         if (MoveTimer >= MoveInterval)
         {
             MoveTimer = 0f;
-            MovePlayer();
+            MoveAll();
+            CheckWin();
         }
     }
 
-    void MovePlayer()
+    void MoveAll()
     {
-        int nextX = Player.X + Player.DirX;
-        int nextY = Player.Y + Player.DirY;
-
-        if (nextX < 0 || nextX >= Cols || nextY < 0 || nextY >= Rows)
+        // bots kiezen richting
+        foreach (var bot in Bots)
         {
-            StartDeath(Player.X, Player.Y);
+            if (bot.Alive)
+                bot.ChooseDirection(Trail, Cols, Rows);
+        }
+
+        // speler
+        if (Player.Alive)
+            TryMove(Player);
+
+        // bots
+        foreach (var bot in Bots)
+        {
+            if (bot.Alive)
+                TryMove(bot);
+        }
+    }
+
+    void TryMove(Entity e)
+    {
+        int nx = e.X + e.DirX;
+        int ny = e.Y + e.DirY;
+
+        if (nx < 0 || ny < 0 || nx >= Cols || ny >= Rows || Trail.Contains((nx, ny)))
+        {
+            e.Alive = false;
+            if (e.IsPlayer)
+                StartDeath(e.X, e.Y);
             return;
         }
 
-        if (Trail.Contains((nextX, nextY)))
-        {
-            StartDeath(nextX, nextY);
-            return;
-        }
+        e.X = nx;
+        e.Y = ny;
+        Trail.Add((nx, ny));
+    }
 
-        Player.X = nextX;
-        Player.Y = nextY;
-        Trail.Add((nextX, nextY));
+    void CheckWin()
+    {
+        if (!Player.Alive) return;
+
+        int botsAlive = 0;
+        foreach (var b in Bots)
+            if (b.Alive) botsAlive++;
+
+        if (botsAlive == 0)
+        {
+            GameOver = true;
+            PlayerWon = true;
+        }
     }
 
     public void Draw()
@@ -126,24 +160,16 @@ class Game
 
         foreach (var cell in Trail)
         {
-            Raylib.DrawRectangle(
-                cell.x * CellSize,
-                cell.y * CellSize,
-                CellSize,
-                CellSize,
-                new Color(40, 40, 80, 255)
-            );
+            Raylib.DrawRectangle(cell.x * CellSize, cell.y * CellSize, CellSize, CellSize, new Color(40, 40, 80, 255));
         }
 
         if (Player.Alive && !DeathAnim)
+            Raylib.DrawRectangle(Player.X * CellSize, Player.Y * CellSize, CellSize, CellSize, Player.Color);
+
+        foreach (var bot in Bots)
         {
-            Raylib.DrawRectangle(
-                Player.X * CellSize,
-                Player.Y * CellSize,
-                CellSize,
-                CellSize,
-                Player.Color
-            );
+            if (bot.Alive)
+                Raylib.DrawRectangle(bot.X * CellSize, bot.Y * CellSize, CellSize, CellSize, bot.Color);
         }
 
         if (DeathAnim)
@@ -152,18 +178,21 @@ class Game
             int cy = DeathY * CellSize + CellSize / 2;
             float t = DeathTimer / 3f;
             int radius = (int)(10 + t * 40);
-
             Raylib.DrawCircleLines(cx, cy, radius, Color.Red);
             Raylib.DrawCircleLines(cx, cy, radius + 8, Color.Orange);
             Raylib.DrawRectangle(DeathX * CellSize, DeathY * CellSize, CellSize, CellSize, Color.Red);
         }
 
-        Raylib.DrawText("Fase 4: classes (klaar voor bots)", 10, 10, 20, Color.White);
-        Raylib.DrawText("WASD / Pijltjes", 10, 40, 18, Color.Gray);
+        Raylib.DrawText("Fase 4: 3 bots (random / cautious / aggressive)", 10, 10, 20, Color.White);
+        Raylib.DrawText("WASD / Pijltjes | Enter = opnieuw", 10, 40, 18, Color.Gray);
 
         if (GameOver)
         {
-            Raylib.DrawText("GAME OVER", 280, 280, 28, Color.Yellow);
+            if (PlayerWon)
+                Raylib.DrawText("JE WINT!", 300, 280, 28, Color.Green);
+            else
+                Raylib.DrawText("GAME OVER", 280, 280, 28, Color.Yellow);
+
             Raylib.DrawText("Druk op Enter om opnieuw te spelen", 205, 315, 18, Color.White);
         }
 
