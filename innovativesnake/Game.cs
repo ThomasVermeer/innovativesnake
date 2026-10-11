@@ -101,18 +101,15 @@ class Game
 
     void MoveAll()
     {
-        // bots kiezen richting
         foreach (var bot in Bots)
         {
             if (bot.Alive)
-                bot.ChooseDirection(Trail, Cols, Rows);
+                bot.ChooseDirection(Trail, Cols, Rows, Player.X, Player.Y);
         }
 
-        // speler
         if (Player.Alive)
             TryMove(Player);
 
-        // bots
         foreach (var bot in Bots)
         {
             if (bot.Alive)

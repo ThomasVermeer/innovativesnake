@@ -21,16 +21,16 @@ class Bot : Entity
         Rng = new Random(seed);
     }
 
-    public void ChooseDirection(HashSet<(int x, int y)> trail, int cols, int rows)
+    public void ChooseDirection(HashSet<(int x, int y)> trail, int cols, int rows, int playerX, int playerY)
     {
         if (!Alive) return;
 
         List<(int dx, int dy)> options = new List<(int dx, int dy)>
-        {
-            (0, -1), (0, 1), (-1, 0), (1, 0)
-        };
+    {
+        (0, -1), (0, 1), (-1, 0), (1, 0)
+    };
 
-        // geen 180 graden
+        // geen 180°
         options.RemoveAll(o => o.dx == -DirX && o.dy == -DirY);
 
         List<(int dx, int dy)> safe = new List<(int dx, int dy)>();
@@ -43,47 +43,58 @@ class Bot : Entity
         }
 
         if (safe.Count == 0)
+            return; // geen zet → TryMove maakt Alive = false
+
+        bool straightSafe = false;
+        foreach (var s in safe)
         {
-            // geen veilige zet → random (doodlopend)
-            if (options.Count > 0)
+            if (s.dx == DirX && s.dy == DirY)
             {
-                var pick = options[Rng.Next(options.Count)];
-                DirX = pick.dx;
-                DirY = pick.dy;
+                straightSafe = true;
+                break;
             }
+        }
+
+        if (Style == BotStyle.Cautious)
+        {
+            if (straightSafe)
+                return; // blijf rechtdoor
+
+            var pick = safe[Rng.Next(safe.Count)];
+            DirX = pick.dx;
+            DirY = pick.dy;
             return;
         }
 
         if (Style == BotStyle.Random)
         {
+            // 75% rechtdoor als dat kan, anders random safe
+            if (straightSafe && Rng.Next(100) < 75)
+                return;
+
             var pick = safe[Rng.Next(safe.Count)];
             DirX = pick.dx;
             DirY = pick.dy;
+            return;
         }
-        else if (Style == BotStyle.Cautious)
+
+        // Aggressive: kies safe richting die dichter bij speler komt
+        (int dx, int dy) best = safe[0];
+        int bestScore = int.MaxValue;
+
+        foreach (var s in safe)
         {
-            // blijf rechtdoor als dat kan
-            bool straightOk = false;
-            foreach (var s in safe)
+            int nx = X + s.dx;
+            int ny = Y + s.dy;
+            int dist = Math.Abs(nx - playerX) + Math.Abs(ny - playerY);
+            if (dist < bestScore)
             {
-                if (s.dx == DirX && s.dy == DirY)
-                {
-                    straightOk = true;
-                    break;
-                }
-            }
-            if (!straightOk)
-            {
-                var pick = safe[Rng.Next(safe.Count)];
-                DirX = pick.dx;
-                DirY = pick.dy;
+                bestScore = dist;
+                best = s;
             }
         }
-        else // Aggressive: kies random safe (later uit te breiden naar speler zoeken)
-        {
-            var pick = safe[Rng.Next(safe.Count)];
-            DirX = pick.dx;
-            DirY = pick.dy;
-        }
+
+        DirX = best.dx;
+        DirY = best.dy;
     }
 }
