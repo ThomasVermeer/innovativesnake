@@ -15,6 +15,8 @@ class Program
 
             if (game.GameOver && Raylib.IsKeyPressed(KeyboardKey.Enter))
             {
+                if (game.PlayerWon)
+                    game.Level++;
                 game.Reset();
             }
             else

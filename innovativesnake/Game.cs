@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Raylib_cs;
 
 class Game
@@ -15,6 +16,7 @@ class Game
 
     public float MoveTimer = 0f;
     public float MoveInterval = 0.15f;
+    public int Level = 1;
 
     public bool GameOver = false;
     public bool PlayerWon = false;
@@ -33,9 +35,9 @@ class Game
         Player = new Entity(Cols / 2, Rows - 3, 0, -1, Color.SkyBlue, true);
 
         Bots.Clear();
-        Bots.Add(new Bot(3, 3, 1, 0, Color.Red, BotStyle.Random, 11));
-        Bots.Add(new Bot(Cols - 4, 3, 0, 1, Color.Green, BotStyle.Cautious, 22));
-        Bots.Add(new Bot(Cols / 2, 3, -1, 0, Color.Orange, BotStyle.Aggressive, 33));
+        Bots.Add(new Bot(3, 3, 1, 0, Color.Red, BotStyle.Random, 11 + Level));
+        Bots.Add(new Bot(Cols - 4, 3, 0, 1, Color.Green, BotStyle.Cautious, 22 + Level));
+        Bots.Add(new Bot(Cols / 2, 3, -1, 0, Color.Orange, BotStyle.Aggressive, 33 + Level));
 
         Trail.Clear();
         Trail.Add((Player.X, Player.Y));
@@ -43,6 +45,8 @@ class Game
             Trail.Add((b.X, b.Y));
 
         MoveTimer = 0f;
+        MoveInterval = Math.Max(0.05f, 0.15f - (Level - 1) * 0.01f);
+
         GameOver = false;
         PlayerWon = false;
         DeathAnim = false;
@@ -180,17 +184,15 @@ class Game
             Raylib.DrawRectangle(DeathX * CellSize, DeathY * CellSize, CellSize, CellSize, Color.Red);
         }
 
-        Raylib.DrawText("Fase 4: 3 bots (random / cautious / aggressive)", 10, 10, 20, Color.White);
+        Raylib.DrawText($"Level {Level}", 10, 10, 20, Color.White);
         Raylib.DrawText("WASD / Pijltjes | Enter = opnieuw", 10, 40, 18, Color.Gray);
 
         if (GameOver)
         {
             if (PlayerWon)
-                Raylib.DrawText("JE WINT!", 300, 280, 28, Color.Green);
+                Raylib.DrawText("JE WINT! Enter = volgend level", 220, 280, 24, Color.Green);
             else
-                Raylib.DrawText("GAME OVER", 280, 280, 28, Color.Yellow);
-
-            Raylib.DrawText("Druk op Enter om opnieuw te spelen", 205, 315, 18, Color.White);
+                Raylib.DrawText("GAME OVER - Enter = opnieuw", 220, 280, 24, Color.Yellow);
         }
 
         Raylib.EndDrawing();
