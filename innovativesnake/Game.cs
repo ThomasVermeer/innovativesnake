@@ -57,14 +57,45 @@ class Game
     {
         if (!Player.Alive || GameOver || DeathAnim) return;
 
-        if ((Raylib.IsKeyPressed(KeyboardKey.Up) || Raylib.IsKeyPressed(KeyboardKey.W)) && Player.DirY != 1)
-        { Player.DirX = 0; Player.DirY = -1; }
-        else if ((Raylib.IsKeyPressed(KeyboardKey.Down) || Raylib.IsKeyPressed(KeyboardKey.S)) && Player.DirY != -1)
-        { Player.DirX = 0; Player.DirY = 1; }
-        else if ((Raylib.IsKeyPressed(KeyboardKey.Left) || Raylib.IsKeyPressed(KeyboardKey.A)) && Player.DirX != 1)
-        { Player.DirX = -1; Player.DirY = 0; }
-        else if ((Raylib.IsKeyPressed(KeyboardKey.Right) || Raylib.IsKeyPressed(KeyboardKey.D)) && Player.DirX != -1)
-        { Player.DirX = 1; Player.DirY = 0; }
+        bool diagonal = Level >= 10;
+
+        int wantX = Player.DirX;
+        int wantY = Player.DirY;
+
+        bool up = Raylib.IsKeyDown(KeyboardKey.Up) || Raylib.IsKeyDown(KeyboardKey.W);
+        bool down = Raylib.IsKeyDown(KeyboardKey.Down) || Raylib.IsKeyDown(KeyboardKey.S);
+        bool left = Raylib.IsKeyDown(KeyboardKey.Left) || Raylib.IsKeyDown(KeyboardKey.A);
+        bool right = Raylib.IsKeyDown(KeyboardKey.Right) || Raylib.IsKeyDown(KeyboardKey.D);
+
+        if (diagonal)
+        {
+            if (up && left) { wantX = -1; wantY = -1; }
+            else if (up && right) { wantX = 1; wantY = -1; }
+            else if (down && left) { wantX = -1; wantY = 1; }
+            else if (down && right) { wantX = 1; wantY = 1; }
+            else if (up) { wantX = 0; wantY = -1; }
+            else if (down) { wantX = 0; wantY = 1; }
+            else if (left) { wantX = -1; wantY = 0; }
+            else if (right) { wantX = 1; wantY = 0; }
+        }
+        else
+        {
+            if (Raylib.IsKeyPressed(KeyboardKey.Up) || Raylib.IsKeyPressed(KeyboardKey.W))
+            { wantX = 0; wantY = -1; }
+            else if (Raylib.IsKeyPressed(KeyboardKey.Down) || Raylib.IsKeyPressed(KeyboardKey.S))
+            { wantX = 0; wantY = 1; }
+            else if (Raylib.IsKeyPressed(KeyboardKey.Left) || Raylib.IsKeyPressed(KeyboardKey.A))
+            { wantX = -1; wantY = 0; }
+            else if (Raylib.IsKeyPressed(KeyboardKey.Right) || Raylib.IsKeyPressed(KeyboardKey.D))
+            { wantX = 1; wantY = 0; }
+        }
+
+        // geen 180°
+        if (wantX == -Player.DirX && wantY == -Player.DirY)
+            return;
+
+        Player.DirX = wantX;
+        Player.DirY = wantY;
     }
 
     void StartDeath(int x, int y)
@@ -105,10 +136,12 @@ class Game
 
     void MoveAll()
     {
+        bool diagonal = Level >= 10;
+
         foreach (var bot in Bots)
         {
             if (bot.Alive)
-                bot.ChooseDirection(Trail, Cols, Rows, Player.X, Player.Y);
+                bot.ChooseDirection(Trail, Cols, Rows, Player.X, Player.Y, diagonal);
         }
 
         if (Player.Alive)
@@ -185,7 +218,10 @@ class Game
         }
 
         Raylib.DrawText($"Level {Level}", 10, 10, 20, Color.White);
-        Raylib.DrawText("WASD / Pijltjes | Enter = opnieuw", 10, 40, 18, Color.Gray);
+        if (Level >= 10)
+            Raylib.DrawText("Diagonalen AAN (schuin met 2 toetsen)", 10, 40, 18, Color.Orange);
+        else
+            Raylib.DrawText("WASD / Pijltjes | Enter = opnieuw", 10, 40, 18, Color.Gray);
 
         if (GameOver)
         {

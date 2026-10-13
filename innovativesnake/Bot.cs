@@ -21,14 +21,22 @@ class Bot : Entity
         Rng = new Random(seed);
     }
 
-    public void ChooseDirection(HashSet<(int x, int y)> trail, int cols, int rows, int playerX, int playerY)
+    public void ChooseDirection(HashSet<(int x, int y)> trail, int cols, int rows, int playerX, int playerY, bool diagonal)
     {
         if (!Alive) return;
 
         List<(int dx, int dy)> options = new List<(int dx, int dy)>
-    {
-        (0, -1), (0, 1), (-1, 0), (1, 0)
-    };
+        {
+            (0, -1), (0, 1), (-1, 0), (1, 0)
+        };
+
+        if (diagonal)
+        {
+            options.Add((-1, -1));
+            options.Add((1, -1));
+            options.Add((-1, 1));
+            options.Add((1, 1));
+        }
 
         // geen 180°
         options.RemoveAll(o => o.dx == -DirX && o.dy == -DirY);
@@ -43,7 +51,7 @@ class Bot : Entity
         }
 
         if (safe.Count == 0)
-            return; // geen zet → TryMove maakt Alive = false
+            return;
 
         bool straightSafe = false;
         foreach (var s in safe)
@@ -58,7 +66,7 @@ class Bot : Entity
         if (Style == BotStyle.Cautious)
         {
             if (straightSafe)
-                return; // blijf rechtdoor
+                return;
 
             var pick = safe[Rng.Next(safe.Count)];
             DirX = pick.dx;
@@ -68,7 +76,6 @@ class Bot : Entity
 
         if (Style == BotStyle.Random)
         {
-            // 75% rechtdoor als dat kan, anders random safe
             if (straightSafe && Rng.Next(100) < 75)
                 return;
 
@@ -78,7 +85,7 @@ class Bot : Entity
             return;
         }
 
-        // Aggressive: kies safe richting die dichter bij speler komt
+        // Aggressive: dichter bij speler
         (int dx, int dy) best = safe[0];
         int bestScore = int.MaxValue;
 
