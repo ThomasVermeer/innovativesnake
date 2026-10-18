@@ -21,7 +21,7 @@ class Bot : Entity
         Rng = new Random(seed);
     }
 
-    public void ChooseDirection(HashSet<(int x, int y)> trail, int cols, int rows, int playerX, int playerY, bool diagonal)
+    public void ChooseDirection(Dictionary<(int x, int y), Color> trail, int cols, int rows, int playerX, int playerY, bool diagonal)
     {
         if (!Alive) return;
 
@@ -46,7 +46,7 @@ class Bot : Entity
         {
             int nx = X + o.dx;
             int ny = Y + o.dy;
-            if (nx >= 0 && ny >= 0 && nx < cols && ny < rows && !trail.Contains((nx, ny)))
+            if (nx >= 0 && ny >= 0 && nx < cols && ny < rows && !trail.ContainsKey((nx, ny)))
                 safe.Add(o);
         }
 

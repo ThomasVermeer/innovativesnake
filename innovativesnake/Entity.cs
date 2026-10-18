@@ -1,4 +1,5 @@
-﻿using Raylib_cs;
+﻿
+using Raylib_cs;
 
 class Entity
 {
@@ -7,6 +8,7 @@ class Entity
     public int DirX;
     public int DirY;
     public Color Color;
+    public Color TrailColor;
     public bool Alive = true;
     public bool IsPlayer;
 
@@ -17,6 +19,7 @@ class Entity
         DirX = dirX;
         DirY = dirY;
         Color = color;
+        TrailColor = color;
         IsPlayer = isPlayer;
     }
 }

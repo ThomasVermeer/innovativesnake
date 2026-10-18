@@ -12,7 +12,7 @@ class Game
 
     public Entity Player;
     public List<Bot> Bots = new List<Bot>();
-    public HashSet<(int x, int y)> Trail = new HashSet<(int x, int y)>();
+    public Dictionary<(int x, int y), Color> Trail = new Dictionary<(int x, int y), Color>();
 
     public float MoveTimer = 0f;
     public float MoveInterval = 0.15f;
@@ -40,9 +40,10 @@ class Game
         Bots.Add(new Bot(Cols / 2, 3, -1, 0, Color.Orange, BotStyle.Aggressive, 33 + Level));
 
         Trail.Clear();
-        Trail.Add((Player.X, Player.Y));
+        Trail.Add((Player.X, Player.Y), Player.TrailColor);
+
         foreach (var b in Bots)
-            Trail.Add((b.X, b.Y));
+            Trail.Add((b.X, b.Y), b.TrailColor);
 
         MoveTimer = 0f;
         MoveInterval = Math.Max(0.05f, 0.15f - (Level - 1) * 0.01f);
@@ -154,12 +155,13 @@ class Game
         }
     }
 
+
     void TryMove(Entity e)
     {
         int nx = e.X + e.DirX;
         int ny = e.Y + e.DirY;
 
-        if (nx < 0 || ny < 0 || nx >= Cols || ny >= Rows || Trail.Contains((nx, ny)))
+        if (nx < 0 || ny < 0 || nx >= Cols || ny >= Rows || Trail.ContainsKey((nx, ny)))
         {
             e.Alive = false;
             if (e.IsPlayer)
@@ -169,8 +171,9 @@ class Game
 
         e.X = nx;
         e.Y = ny;
-        Trail.Add((nx, ny));
+        Trail.Add((nx, ny), e.TrailColor);
     }
+
 
     void CheckWin()
     {
@@ -194,7 +197,13 @@ class Game
 
         foreach (var cell in Trail)
         {
-            Raylib.DrawRectangle(cell.x * CellSize, cell.y * CellSize, CellSize, CellSize, new Color(40, 40, 80, 255));
+            Raylib.DrawRectangle(
+                cell.Key.x * CellSize,
+                cell.Key.y * CellSize,
+                CellSize,
+                CellSize,
+                cell.Value
+            );
         }
 
         if (Player.Alive && !DeathAnim)
