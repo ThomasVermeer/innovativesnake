@@ -13,7 +13,11 @@ class Program
         {
             float dt = Raylib.GetFrameTime();
 
-            if (game.GameOver && Raylib.IsKeyPressed(KeyboardKey.Enter))
+            if (game.State == GameState.Playing && Raylib.IsKeyPressed(KeyboardKey.Escape))
+            {
+                game.State = GameState.Menu;
+            }
+            else if (game.State == GameState.Playing && game.GameOver && Raylib.IsKeyPressed(KeyboardKey.Enter))
             {
                 if (game.PlayerWon)
                     game.Level++;

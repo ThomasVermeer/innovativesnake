@@ -2,6 +2,12 @@
 using System.Collections.Generic;
 using Raylib_cs;
 
+enum GameState
+{
+    Menu,
+    Playing
+}
+
 class Game
 {
     public const int CellSize = 20;
@@ -25,9 +31,15 @@ class Game
     public int DeathX = 0;
     public int DeathY = 0;
 
+    public GameState State = GameState.Menu;
+    public int MenuMovement = 0;
+    public int MenuSpeed = 1;
+    public int MenuFocus = 0;
+    public bool DiagonalEnabled = false;
+
     public Game()
     {
-        Reset();
+        // start in menu, nog niet resetten tot Start
     }
 
     public void Reset()
@@ -41,12 +53,19 @@ class Game
 
         Trail.Clear();
         Trail.Add((Player.X, Player.Y), Player.TrailColor);
-
         foreach (var b in Bots)
             Trail.Add((b.X, b.Y), b.TrailColor);
 
         MoveTimer = 0f;
-        MoveInterval = Math.Max(0.05f, 0.15f - (Level - 1) * 0.01f);
+
+        if (MenuSpeed == 0) MoveInterval = 0.22f;
+        else if (MenuSpeed == 1) MoveInterval = 0.15f;
+        else MoveInterval = 0.09f;
+
+        // level maakt nog sneller
+        MoveInterval = Math.Max(0.05f, MoveInterval - (Level - 1) * 0.008f);
+
+        DiagonalEnabled = (MenuMovement == 1);
 
         GameOver = false;
         PlayerWon = false;
@@ -54,11 +73,72 @@ class Game
         DeathTimer = 0f;
     }
 
+    public void UpdateMenu()
+    {
+        if (Raylib.IsKeyPressed(KeyboardKey.Up) || Raylib.IsKeyPressed(KeyboardKey.W))
+        {
+            if (MenuFocus == 0)
+                MenuMovement = Math.Max(0, MenuMovement - 1);
+            else if (MenuFocus == 1)
+                MenuSpeed = Math.Max(0, MenuSpeed - 1);
+        }
+
+        if (Raylib.IsKeyPressed(KeyboardKey.Down) || Raylib.IsKeyPressed(KeyboardKey.S))
+        {
+            if (MenuFocus == 0)
+                MenuMovement = Math.Min(1, MenuMovement + 1);
+            else if (MenuFocus == 1)
+                MenuSpeed = Math.Min(2, MenuSpeed + 1);
+        }
+
+        if (Raylib.IsKeyPressed(KeyboardKey.Left) || Raylib.IsKeyPressed(KeyboardKey.A))
+            MenuFocus = Math.Max(0, MenuFocus - 1);
+
+        if (Raylib.IsKeyPressed(KeyboardKey.Right) || Raylib.IsKeyPressed(KeyboardKey.D))
+            MenuFocus = Math.Min(2, MenuFocus + 1);
+
+        if (Raylib.IsKeyPressed(KeyboardKey.Enter) || Raylib.IsKeyPressed(KeyboardKey.Space))
+        {
+            Level = 1;
+            State = GameState.Playing;
+            Reset();
+        }
+    }
+
+    public void DrawMenu()
+    {
+        Raylib.BeginDrawing();
+        Raylib.ClearBackground(Color.Black);
+
+        Raylib.DrawText("LOCKSTEP", 280, 60, 40, Color.SkyBlue);
+        Raylib.DrawText("Hoofdmenu", 320, 110, 20, Color.Gray);
+
+        Raylib.DrawText("Movement", 100, 180, 22, MenuFocus == 0 ? Color.Yellow : Color.White);
+        Raylib.DrawText(MenuMovement == 0 ? "> Normaal" : "  Normaal", 100, 220, 20,
+            MenuMovement == 0 ? Color.Green : Color.Gray);
+        Raylib.DrawText(MenuMovement == 1 ? "> Normaal + schuin" : "  Normaal + schuin", 100, 250, 20,
+            MenuMovement == 1 ? Color.Green : Color.Gray);
+
+        Raylib.DrawText("Speed", 480, 180, 22, MenuFocus == 1 ? Color.Yellow : Color.White);
+        Raylib.DrawText(MenuSpeed == 0 ? "> Traag" : "  Traag", 480, 220, 20,
+            MenuSpeed == 0 ? Color.Green : Color.Gray);
+        Raylib.DrawText(MenuSpeed == 1 ? "> Normaal" : "  Normaal", 480, 250, 20,
+            MenuSpeed == 1 ? Color.Green : Color.Gray);
+        Raylib.DrawText(MenuSpeed == 2 ? "> Snel" : "  Snel", 480, 280, 20,
+            MenuSpeed == 2 ? Color.Green : Color.Gray);
+
+        Raylib.DrawText("[ ENTER = START ]", 270, 380, 24, Color.Orange);
+        Raylib.DrawText("Links/Rechts = kolom | Omhoog/Omlaag = optie", 180, 430, 18, Color.DarkGray);
+        Raylib.DrawText("In-game: ESC = terug naar menu", 240, 460, 18, Color.DarkGray);
+
+        Raylib.EndDrawing();
+    }
+
     public void HandleInput()
     {
         if (!Player.Alive || GameOver || DeathAnim) return;
 
-        bool diagonal = Level >= 10;
+        bool diagonal = DiagonalEnabled;
 
         int wantX = Player.DirX;
         int wantY = Player.DirY;
@@ -91,7 +171,6 @@ class Game
             { wantX = 1; wantY = 0; }
         }
 
-        // geen 180°
         if (wantX == -Player.DirX && wantY == -Player.DirY)
             return;
 
@@ -110,6 +189,12 @@ class Game
 
     public void Update(float dt)
     {
+        if (State == GameState.Menu)
+        {
+            UpdateMenu();
+            return;
+        }
+
         if (DeathAnim)
         {
             DeathTimer += dt;
@@ -137,7 +222,7 @@ class Game
 
     void MoveAll()
     {
-        bool diagonal = Level >= 10;
+        bool diagonal = DiagonalEnabled;
 
         foreach (var bot in Bots)
         {
@@ -155,7 +240,6 @@ class Game
         }
     }
 
-
     void TryMove(Entity e)
     {
         int nx = e.X + e.DirX;
@@ -171,9 +255,8 @@ class Game
 
         e.X = nx;
         e.Y = ny;
-        Trail.Add((nx, ny), e.TrailColor);
+        Trail[(nx, ny)] = e.TrailColor;
     }
-
 
     void CheckWin()
     {
@@ -192,6 +275,12 @@ class Game
 
     public void Draw()
     {
+        if (State == GameState.Menu)
+        {
+            DrawMenu();
+            return;
+        }
+
         Raylib.BeginDrawing();
         Raylib.ClearBackground(Color.Black);
 
@@ -227,10 +316,10 @@ class Game
         }
 
         Raylib.DrawText($"Level {Level}", 10, 10, 20, Color.White);
-        if (Level >= 10)
-            Raylib.DrawText("Diagonalen AAN (schuin met 2 toetsen)", 10, 40, 18, Color.Orange);
+        if (DiagonalEnabled)
+            Raylib.DrawText("Schuin AAN", 10, 40, 18, Color.Orange);
         else
-            Raylib.DrawText("WASD / Pijltjes | Enter = opnieuw", 10, 40, 18, Color.Gray);
+            Raylib.DrawText("WASD / Pijltjes | ESC = menu", 10, 40, 18, Color.Gray);
 
         if (GameOver)
         {
