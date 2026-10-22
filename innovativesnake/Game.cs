@@ -39,7 +39,6 @@ class Game
 
     public Game()
     {
-        // start in menu, nog niet resetten tot Start
     }
 
     public void Reset()
@@ -62,7 +61,6 @@ class Game
         else if (MenuSpeed == 1) MoveInterval = 0.15f;
         else MoveInterval = 0.09f;
 
-        // level maakt nog sneller
         MoveInterval = Math.Max(0.05f, MoveInterval - (Level - 1) * 0.008f);
 
         DiagonalEnabled = (MenuMovement == 1);
@@ -296,12 +294,18 @@ class Game
         }
 
         if (Player.Alive && !DeathAnim)
+        {
             Raylib.DrawRectangle(Player.X * CellSize, Player.Y * CellSize, CellSize, CellSize, Player.Color);
+            Raylib.DrawRectangleLines(Player.X * CellSize, Player.Y * CellSize, CellSize, CellSize, Color.White);
+        }
 
         foreach (var bot in Bots)
         {
             if (bot.Alive)
+            {
                 Raylib.DrawRectangle(bot.X * CellSize, bot.Y * CellSize, CellSize, CellSize, bot.Color);
+                Raylib.DrawRectangleLines(bot.X * CellSize, bot.Y * CellSize, CellSize, CellSize, Color.White);
+            }
         }
 
         if (DeathAnim)
